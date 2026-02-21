@@ -54,8 +54,7 @@ APIs (ECB, INSEE, Yahoo Finance, Open Food Facts)
   (app.py + pages/)       4 interactive pages
 ```
 
-**Orchestration**: Apache Airflow DAG (`dags/pricing_monitor_dag.py`)
-**CI/CD**: GitHub Actions (`.github/workflows/data_pipeline.yml`)
+**Orchestration & CI/CD**: GitHub Actions (`.github/workflows/data_pipeline.yml`) — weekly scheduled pipeline
 
 ---
 
@@ -111,8 +110,7 @@ uv run pytest tests/ -v
 
 ```
 fmcg_pricing_macro_monitor/
-├── .github/workflows/     # CI pipeline
-├── dags/                  # Airflow DAG
+├── .github/workflows/     # CI/CD pipeline (scheduled weekly)
 ├── data/
 │   ├── raw/               # Raw Parquet from APIs
 │   └── marts/             # DuckDB-transformed models
