@@ -1,86 +1,76 @@
-# 🛒 European FMCG Cost Pressure Monitor
+# 🛒 FMCG Cost Pressure Monitor
 
-> **Real-time macro-economic analysis of cost pressures facing the French FMCG sector.**
-> Built with 100% real data from public APIs.
+> **Analyse macro-économique en temps réel des pressions sur les coûts (Cost Squeeze) du secteur FMCG.**
+> Construit avec 100% de données réelles provenant d'APIs publiques.
 
 ![Python](https://img.shields.io/badge/Python-3.12-blue)
 ![DuckDB](https://img.shields.io/badge/DuckDB-Analytics-orange)
-![Dash](https://img.shields.io/badge/Plotly_Dash-Dashboard-green)
+![ECharts](https://img.shields.io/badge/Apache_ECharts-Dashboard-green)
+![CI/CD](https://img.shields.io/badge/Actions-GitHub-blueviolet)
 ![License](https://img.shields.io/badge/License-MIT-lightgrey)
 
 ---
 
-## 🎯 Business Context
+## 🎯 Contexte Stratégique
 
-The European FMCG sector faces unprecedented cost pressures from:
-- **Agricultural commodity price volatility** (Cocoa, Coffee, Wheat, Sugar)
-- **EUR/USD exchange rate fluctuations** impacting import costs
-- **Consumer price inflation** measured by the INSEE CPI
+Le secteur européen des produits de grande consommation (FMCG) fait face à des pressions historiques sur les coûts liées à :
+- **La volatilité des prix des matières premières agricoles** (Cacao, Café, Blé, Sucre)
+- **Les fluctuations du taux de change EUR/USD** qui ont un impact sur les coûts d'importation
+- **L'inflation des prix à la consommation**, mesurée par l'IPC de l'INSEE
 
-This dashboard monitors these forces in real time and answers:
-- Are raw material costs being passed through to consumers?
-- Which product categories are most exposed to commodity shocks?
-- What is the "cost squeeze" gap between input costs and retail inflation?
-
----
-
-## 📊 Data Sources (100% Real APIs)
-
-| Source | Data | API |
-|--------|------|-----|
-| **European Central Bank** | EUR/USD daily exchange rate | [ECB Data Portal](https://data.ecb.europa.eu/) |
-| **INSEE** | French Consumer Price Index by food category | [INSEE BDM SDMX](https://bdm.insee.fr/) |
-| **Yahoo Finance** | Agricultural commodity prices (Cocoa, Coffee, Sugar, Wheat) | [yfinance](https://pypi.org/project/yfinance/) |
-| **Open Food Facts** | FMCG product catalog (brands, categories, Nutri-Score) | [Open Food Facts API](https://world.openfoodfacts.org/) |
+Ce projet monitorize ces variables en temps réel et répond à :
+- Les coûts des matières premières sont-ils répercutés sur les consommateurs ?
+- Quelles catégories de produits sont les plus exposées aux chocs des cours mondiaux ?
+- Quelle est la "compression des marges" (Cost Squeeze) entre l'inflation industrielle et les prix de détail ?
 
 ---
 
-## 🏗️ Architecture
+## 📊 Sources de Données (APIs 100% Réelles)
+
+| Source | Données | API |
+|--------|---------|-----|
+| **Banque Centrale Européenne** | Taux de change EUR/USD quotidien | [ECB Data Portal](https://data.ecb.europa.eu/) |
+| **INSEE** | Indices des Prix à la Consommation (IPC) par catégorie alimentaire | [INSEE BDM SDMX](https://bdm.insee.fr/) |
+| **Yahoo Finance** | Cours des matières premières (Cacao, Café, Sucre, Blé) | [yfinance](https://pypi.org/project/yfinance/) |
+| **Open Food Facts** | Catalogue de produits FMCG (marques, catégories, Nutri-Score) | [API Open Food Facts](https://world.openfoodfacts.org/) |
+
+---
+
+## 🏗️ Architecture Stack
 
 ```
-APIs (ECB, INSEE, Yahoo Finance, Open Food Facts)
+APIs (BCE, INSEE, Yahoo Finance, Open Food Facts)
         │
         ▼
-  src/extract/          → Raw Parquet files (data/raw/)
+  src/extract/          → Fichiers Parquet bruts (data/raw/)
         │
         ▼
-  src/transform/        → DuckDB star schema (data/marts/)
+  src/transform/        → Modèle en Étoile DuckDB (data/marts/)
   (build_marts.py)        dim_date, dim_product,
                           fact_commodities, fact_inflation, fact_fx
                           mart_category_pressure
         │
         ▼
-  src/dashboard/        → Plotly Dash (localhost:8050)
-  (app.py + pages/)       4 interactive pages
+  reports/              → Export des données structurées
+  dashboard JSON          pour le front-end du portfólio (ECharts)
 ```
 
-**Orchestration & CI/CD**: GitHub Actions (`.github/workflows/data_pipeline.yml`) — weekly scheduled pipeline
+**Orchestration & CI/CD** : GitHub Actions (`.github/workflows/data_pipeline.yml`) — Pipeline planifié de mise à jour hebdomadaire.
 
 ---
 
-## 📈 Dashboard Pages
+## 🚀 Démarrage Rapide
 
-| Page | Description |
-|------|-------------|
-| **🌍 Macro Overview** | KPI cards + trend charts for commodities, FX, and CPI |
-| **📈 Cost Shock** | YoY heatmap + bar chart highlighting commodity surges |
-| **🏷️ Inflation Translation** | Interactive overlay of input costs vs consumer inflation |
-| **⚠️ Category Risk** | Heatmap + data table scoring product category exposure |
-
----
-
-## 🚀 Quick Start
-
-### Prerequisites
+### Prérequis
 - Python 3.12+
-- [uv](https://docs.astral.sh/uv/) package manager
+- Gestionnaire de paquets [uv](https://docs.astral.sh/uv/)
 
-### 1. Install dependencies
+### 1. Installer les dépendances
 ```bash
 uv sync
 ```
 
-### 2. Extract data from APIs
+### 2. Extraire les données des APIs
 ```bash
 uv run python src/extract/ecb_api.py
 uv run python src/extract/insee_api.py
@@ -88,44 +78,36 @@ uv run python src/extract/commodities_api.py
 uv run python src/extract/openfoodfacts_api.py
 ```
 
-### 3. Build DuckDB marts
+### 3. Exécuter les transformations DuckDB
 ```bash
 uv run python src/transform/build_marts.py
 ```
 
-### 4. Run the dashboard
-```bash
-uv run python src/dashboard/app.py
-```
-Open [http://localhost:8050](http://localhost:8050)
-
-### 5. Run tests
+### 4. Exécuter les tests de qualité des données
 ```bash
 uv run pytest tests/ -v
 ```
 
 ---
 
-## 📁 Project Structure
+## 📁 Structure du Projet
 
 ```
 fmcg_pricing_macro_monitor/
-├── .github/workflows/     # CI/CD pipeline (scheduled weekly)
+├── .github/workflows/     # Pipeline CI/CD automatisé (màj hebdo)
 ├── data/
-│   ├── raw/               # Raw Parquet from APIs
-│   └── marts/             # DuckDB-transformed models
+│   ├── raw/               # Fichiers Parquet depuis les APIs
+│   └── marts/             # Tables modélisées via DuckDB
+├── reports/               # Données exportées pour le front-end
 ├── src/
-│   ├── extract/           # API extraction scripts
+│   ├── extract/           # Scripts d'extraction
 │   │   ├── ecb_api.py
 │   │   ├── insee_api.py
 │   │   ├── commodities_api.py
 │   │   └── openfoodfacts_api.py
-│   ├── transform/
-│   │   └── build_marts.py # DuckDB star schema builder
-│   └── dashboard/
-│       ├── app.py         # Dash entry point
-│       └── pages/         # Multi-page dashboard
-├── tests/                 # pytest data quality tests
+│   └── transform/
+│       └── build_marts.py # Création du Data Warehouse DuckDB
+├── tests/                 # Scripts de validation via pytest
 ├── pyproject.toml
 ├── .gitignore
 └── .env.example
@@ -133,16 +115,16 @@ fmcg_pricing_macro_monitor/
 
 ---
 
-## 🧠 Key Analytical Concepts
+## 🧠 Concepts Analytiques Clés
 
-- **Cost Squeeze Score** = Commodity YoY % − CPI YoY %
-  - Positive → Input costs rising faster than retail prices (margin compression)
-  - Negative → Retailers passing costs through to consumers
-- **Primary Commodity Exposure** — Maps Open Food Facts categories to raw materials
-- **YoY Analysis** — All metrics computed as year-over-year percentage changes
+- **Score de "Cost Squeeze"** = YoY % Matières Premières − YoY % IPC
+  - *Positif* → Les coûts d'entrée augmentent plus vite que les prix de vente (compression de la marge).
+  - *Négatif* → Les distributeurs absorbent ou répercutent la baisse des coûts aux consommateurs.
+- **Exposition aux Matières Premières** — Mappage des catégories Open Food Facts vers les cours correspondants.
+- **Analyse en Glissement Annuel (YoY)** — Toutes les mesures sont calculées en variations sur une période de 12 mois.
 
 ---
 
-## 📜 License
+## 📜 Licence
 
 MIT
