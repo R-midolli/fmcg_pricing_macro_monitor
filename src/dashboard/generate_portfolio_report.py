@@ -53,6 +53,17 @@ def build_portfolio_data():
     pivot = pressure.pivot_table(index="inflation_category", columns="commodity",
                                  values="cost_squeeze_score", aggfunc="mean").fillna(0)
     
+    # Inflation Time Series (YoY % per category over time)
+    inf_timeseries = {}
+    for cat in inflation["category"].dropna().unique():
+        d = inflation[inflation["category"] == cat].sort_values("date")
+        d = d.dropna(subset=["yoy_inflation_pct"])
+        if len(d) > 0:
+            inf_timeseries[cat] = {
+                "dates": d["date"].dt.strftime("%Y-%m-%d").tolist(),
+                "values": d["yoy_inflation_pct"].tolist()
+            }
+
     # Final Payload
     payload = {
         "kpis": {
@@ -75,6 +86,7 @@ def build_portfolio_data():
                 "labels": latest_inf["category"].tolist(),
                 "values": latest_inf["yoy_inflation_pct"].tolist()
             },
+            "inflation_timeseries": inf_timeseries,
             "squeeze_matrix": {
                 "x_labels": pivot.columns.tolist(),
                 "y_labels": pivot.index.tolist(),
