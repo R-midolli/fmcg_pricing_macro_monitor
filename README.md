@@ -1,7 +1,7 @@
-# 🛒 FMCG Cost Pressure Monitor
+# 🛒 Retail Pricing Pressure Monitor
 
-> **Analyse macro-économique en temps réel des pressions sur les coûts (Cost Squeeze) du secteur FMCG.**
-> Construit avec 100% de données réelles provenant d'APIs publiques.
+> **Analyse macro-économique des pressions sur les coûts (Cost Squeeze) dans l'industrie agroalimentaire.**
+> Modélisation de la corrélation en direct entre les marchés à terme et l'indice des prix à la consommation.
 
 ![Python](https://img.shields.io/badge/Python-3.12-blue)
 ![DuckDB](https://img.shields.io/badge/DuckDB-Analytics-orange)
@@ -13,26 +13,26 @@
 
 ## 🎯 Contexte Stratégique
 
-Le secteur européen des produits de grande consommation (FMCG) fait face à des pressions historiques sur les coûts liées à :
-- **La volatilité des prix des matières premières agricoles** (Cacao, Café, Blé, Sucre)
-- **Les fluctuations du taux de change EUR/USD** qui ont un impact sur les coûts d'importation
-- **L'inflation des prix à la consommation**, mesurée par l'IPC de l'INSEE
+L'industrie agroalimentaire européenne traverse le cycle inflationniste le plus sévère de la décennie sur les matières premières. Cette pression sur les coûts est principalement liée à :
+- **La volatilité structurelle des marchés agricoles** (Cacao, Café, Blé, Sucre)
+- **Les fluctuations monétaires (EUR/USD)** impactant directement le coût des importations
+- **L'inflation répercutée sur les prix de détail**, mesurée par l'IPC de l'INSEE
 
-Ce projet monitorize ces variables en temps réel et répond à :
-- Les coûts des matières premières sont-ils répercutés sur les consommateurs ?
-- Quelles catégories de produits sont les plus exposées aux chocs des cours mondiaux ?
-- Quelle est la "compression des marges" (Cost Squeeze) entre l'inflation industrielle et les prix de détail ?
+Ce projet quantifie la destruction de marge brute au sein des différentes catégories en répondant à trois questions clés :
+- Historiquement, quelle proportion du choc des matières premières est réellement absorbée par la chaîne d'approvisionnement globale ?
+- Quelles catégories de produits (Chocolats, Pains, Laitiers) sont intrinsèquement les plus vulnérables ?
+- Comment anticiper les "Squeezes" de marge avant la transmission des prix de gros vers les prix en rayon ?
 
 ---
 
-## 📊 Sources de Données (APIs 100% Réelles)
+## 📊 Sources de Données Officielles
 
 | Source | Données | API |
 |--------|---------|-----|
 | **Banque Centrale Européenne** | Taux de change EUR/USD quotidien | [ECB Data Portal](https://data.ecb.europa.eu/) |
 | **INSEE** | Indices des Prix à la Consommation (IPC) par catégorie alimentaire | [INSEE BDM SDMX](https://bdm.insee.fr/) |
 | **Yahoo Finance** | Cours des matières premières (Cacao, Café, Sucre, Blé) | [yfinance](https://pypi.org/project/yfinance/) |
-| **Open Food Facts** | Catalogue de produits FMCG (marques, catégories, Nutri-Score) | [API Open Food Facts](https://world.openfoodfacts.org/) |
+| **Open Food Facts** | Catalogue transactionnel et pondération catégorielle | [API Open Food Facts](https://world.openfoodfacts.org/) |
 
 ---
 
