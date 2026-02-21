@@ -1,0 +1,50 @@
+name: FMCG Pipeline CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  pipeline:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Set up Python
+        run: uv python install
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Extract ECB FX data
+        run: uv run python src/extract/ecb_api.py
+
+      - name: Extract INSEE CPI data
+        run: uv run python src/extract/insee_api.py
+
+      - name: Extract Commodities data
+        run: uv run python src/extract/commodities_api.py
+
+      - name: Extract Open Food Facts data
+        run: uv run python src/extract/openfoodfacts_api.py
+
+      - name: Build DuckDB marts
+        run: uv run python src/transform/build_marts.py
+
+      - name: Run data quality tests
+        run: uv run pytest tests/ -v --tb=short
+
+      - name: Upload mart artifacts
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: data-marts
+          path: data/marts/
+          retention-days: 7
