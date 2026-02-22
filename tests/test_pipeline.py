@@ -65,11 +65,18 @@ class TestMarts:
         valid_exposures = {"Cocoa", "Coffee", "Sugar", "Wheat", "Other"}
         assert set(df["primary_commodity_exposure"].unique()).issubset(valid_exposures)
 
-    def test_fact_commodities_has_yoy(self):
+    def test_fact_commodities_has_metrics(self):
         df = pd.read_parquet(os.path.join(MARTS_DIR, "fact_commodities.parquet"))
         assert len(df) > 0
+        assert "wow_change_pct" in df.columns
         assert "yoy_change_pct" in df.columns
-        assert "rolling_3m_avg" in df.columns
+        assert "rolling_13w_avg" in df.columns
+
+    def test_mart_momentum(self):
+        df = pd.read_parquet(os.path.join(MARTS_DIR, "mart_momentum.parquet"))
+        assert len(df) > 0
+        assert "change_4w_pct" in df.columns
+        assert "change_12w_pct" in df.columns
 
     def test_fact_inflation_has_yoy(self):
         df = pd.read_parquet(os.path.join(MARTS_DIR, "fact_inflation.parquet"))
