@@ -20,6 +20,11 @@ def build_portfolio_data():
     fx["date"] = pd.to_datetime(fx["date"])
     inflation["date"] = pd.to_datetime(inflation["date"])
 
+    # Try loading momentum (may not exist on first run)
+    momentum_path = os.path.join(MARTS, "mart_momentum.parquet")
+    momentum = pd.read_parquet(momentum_path) if os.path.exists(momentum_path) else None
+    if momentum is not None:
+        momentum["date"] = pd.to_datetime(momentum["date"])
 
     # FX Data
     fx_sorted = fx.sort_values("date")
@@ -27,16 +32,18 @@ def build_portfolio_data():
     fx_dates = fx_sorted["date"].dt.strftime("%Y-%m-%d").tolist()
     fx_values = fx_sorted["fx_eur_usd"].tolist()
 
-    # Commodities Data
+    # Commodities Data — resample weekly to monthly for the base‑100 chart
     comm_data = {}
     kpis = {}
     for c in ["Cocoa", "Coffee", "Sugar", "Wheat"]:
         d = commodities[commodities["commodity"] == c].sort_values("date")
         if len(d) > 0:
             kpis[c] = float(d.iloc[-1]["price_usd"])
+            # Resample to month-end (last observation per month) for the base‑100 chart
+            d_monthly = d.set_index("date").resample("MS").last().dropna(subset=["price_usd"]).reset_index()
             comm_data[c] = {
-                "dates": d["date"].dt.strftime("%Y-%m-%d").tolist(),
-                "prices": d["price_usd"].tolist()
+                "dates": d_monthly["date"].dt.strftime("%Y-%m-%d").tolist(),
+                "prices": d_monthly["price_usd"].tolist()
             }
 
     # YoY Commodity Change
@@ -63,6 +70,20 @@ def build_portfolio_data():
                 "dates": d["date"].dt.strftime("%Y-%m-%d").tolist(),
                 "values": d["yoy_inflation_pct"].tolist()
             }
+
+    # Momentum data (last 16 weeks per commodity)
+    momentum_data = {}
+    if momentum is not None and not momentum.empty:
+        for c in ["Cocoa", "Coffee", "Sugar", "Wheat"]:
+            d = momentum[momentum["commodity"] == c].sort_values("date")
+            if len(d) > 0:
+                momentum_data[c] = {
+                    "dates": d["date"].dt.strftime("%Y-%m-%d").tolist(),
+                    "prices": d["price_usd"].tolist(),
+                    "wow_pct": [round(v, 2) if pd.notna(v) else None for v in d["wow_change_pct"]],
+                    "change_4w": round(float(d.iloc[-1].get("change_4w_pct", 0) or 0), 1),
+                    "change_12w": round(float(d.iloc[-1].get("change_12w_pct", 0) or 0), 1),
+                }
 
     # Final Payload
     payload = {
@@ -91,7 +112,8 @@ def build_portfolio_data():
                 "x_labels": pivot.columns.tolist(),
                 "y_labels": pivot.index.tolist(),
                 "z_values": pivot.values.tolist()
-            }
+            },
+            "momentum": momentum_data
         }
     }
 

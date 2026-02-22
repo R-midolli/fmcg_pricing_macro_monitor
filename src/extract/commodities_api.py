@@ -32,7 +32,7 @@ def fetch_commodities_data():
     for name, ticker in commodities.items():
         print(f"Downloading {name} ({ticker})...")
         try:
-            df = yf.download(ticker, start=start_date, end=end_date, interval="1mo", progress=False)
+            df = yf.download(ticker, start=start_date, end=end_date, interval="1wk", progress=False)
             
             if not df.empty:
                 # yfinance returns a MultiIndex column DataFrame sometimes, we just need the 'Close' price
@@ -55,8 +55,7 @@ def fetch_commodities_data():
         final_df = pd.concat(all_data, ignore_index=True)
         # Clean up timezone and NaNs
         final_df['date'] = pd.to_datetime(final_df['date']).dt.tz_localize(None)
-        # Start of month
-        final_df['date'] = final_df['date'] - pd.offsets.MonthBegin(1)
+        final_df['date'] = final_df['date'].dt.normalize()  # strip time, keep date
         final_df = final_df.dropna(subset=['price_usd'])
         
         print(f"Successfully fetched {len(final_df)} commodity records.")

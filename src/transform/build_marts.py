@@ -79,13 +79,17 @@ def build_marts():
                 date,
                 commodity,
                 price_usd,
-                -- YoY % change
-                (price_usd - LAG(price_usd, 12) OVER (PARTITION BY commodity ORDER BY date))
-                    / NULLIF(LAG(price_usd, 12) OVER (PARTITION BY commodity ORDER BY date), 0) * 100
+                -- WoW % change (1 week)
+                (price_usd - LAG(price_usd, 1) OVER (PARTITION BY commodity ORDER BY date))
+                    / NULLIF(LAG(price_usd, 1) OVER (PARTITION BY commodity ORDER BY date), 0) * 100
+                    AS wow_change_pct,
+                -- YoY % change (~52 weeks)
+                (price_usd - LAG(price_usd, 52) OVER (PARTITION BY commodity ORDER BY date))
+                    / NULLIF(LAG(price_usd, 52) OVER (PARTITION BY commodity ORDER BY date), 0) * 100
                     AS yoy_change_pct,
-                -- Rolling 3-month average
-                AVG(price_usd) OVER (PARTITION BY commodity ORDER BY date ROWS BETWEEN 2 PRECEDING AND CURRENT ROW)
-                    AS rolling_3m_avg
+                -- Rolling 13-week average (~3 months)
+                AVG(price_usd) OVER (PARTITION BY commodity ORDER BY date ROWS BETWEEN 12 PRECEDING AND CURRENT ROW)
+                    AS rolling_13w_avg
             FROM read_parquet('{_p("commodities_prices.parquet")}')
             ORDER BY commodity, date
         ) TO '{_m("fact_commodities.parquet")}' (FORMAT PARQUET)
@@ -136,16 +140,18 @@ def build_marts():
     """)
 
     # ── 6. mart_category_pressure ────────────────────────────────────────
+    # Inflation is monthly, so resample weekly commodity data to monthly for the join.
     print("Building mart_category_pressure...")
     con.execute(f"""
         COPY (
-            WITH commodity_latest AS (
+            WITH commodity_monthly AS (
                 SELECT
                     commodity,
-                    date,
-                    price_usd,
-                    yoy_change_pct
+                    DATE_TRUNC('month', date) AS date,
+                    LAST(price_usd ORDER BY date) AS price_usd,
+                    LAST(yoy_change_pct ORDER BY date) AS yoy_change_pct
                 FROM read_parquet('{_m("fact_commodities.parquet")}')
+                GROUP BY commodity, DATE_TRUNC('month', date)
             ),
             inflation AS (
                 SELECT
@@ -181,11 +187,46 @@ def build_marts():
                 COALESCE(c.yoy_change_pct, 0) - COALESCE(i.yoy_inflation_pct, 0) AS cost_squeeze_score
             FROM inflation i
             INNER JOIN mapping m ON i.inflation_category = m.inflation_category
-            LEFT  JOIN commodity_latest c ON m.commodity = c.commodity AND i.date = c.date
+            LEFT  JOIN commodity_monthly c ON m.commodity = c.commodity AND i.date = c.date
             LEFT  JOIN fx f ON i.date = f.date
             WHERE c.price_usd IS NOT NULL
             ORDER BY i.date, i.inflation_category
         ) TO '{_m("mart_category_pressure.parquet")}' (FORMAT PARQUET)
+    """)
+
+    # ── 7. mart_momentum ─────────────────────────────────────────────────
+    # Short-term momentum: last 16 weeks of prices + 4-week and 12-week changes.
+    print("Building mart_momentum...")
+    con.execute(f"""
+        COPY (
+            WITH ranked AS (
+                SELECT
+                    date,
+                    commodity,
+                    price_usd,
+                    wow_change_pct,
+                    rolling_13w_avg,
+                    ROW_NUMBER() OVER (PARTITION BY commodity ORDER BY date DESC) AS rn
+                FROM read_parquet('{_m("fact_commodities.parquet")}')
+            )
+            SELECT
+                date,
+                commodity,
+                price_usd,
+                wow_change_pct,
+                rolling_13w_avg,
+                -- 4-week change
+                (price_usd - LEAD(price_usd, 4) OVER (PARTITION BY commodity ORDER BY date DESC))
+                    / NULLIF(LEAD(price_usd, 4) OVER (PARTITION BY commodity ORDER BY date DESC), 0) * 100
+                    AS change_4w_pct,
+                -- 12-week change
+                (price_usd - LEAD(price_usd, 12) OVER (PARTITION BY commodity ORDER BY date DESC))
+                    / NULLIF(LEAD(price_usd, 12) OVER (PARTITION BY commodity ORDER BY date DESC), 0) * 100
+                    AS change_12w_pct
+            FROM ranked
+            WHERE rn <= 16
+            ORDER BY commodity, date
+        ) TO '{_m("mart_momentum.parquet")}' (FORMAT PARQUET)
     """)
 
     con.close()
