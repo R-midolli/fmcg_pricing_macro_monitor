@@ -89,3 +89,37 @@ class TestMarts:
         assert "cost_squeeze_score" in df.columns
         assert "inflation_category" in df.columns
         assert "commodity" in df.columns
+
+import json
+
+COMMODITY_PRICE_RANGES = {
+    "Coffee": (1.0,  6.0),
+    "Sugar":  (0.08, 0.35),
+    "Wheat":  (3.5,  9.0),
+    "Cocoa":  (1500, 15000),
+}
+
+def test_commodity_price_units():
+    df = pd.read_parquet("data/raw/commodities_prices.parquet")
+    for commodity, (lo, hi) in COMMODITY_PRICE_RANGES.items():
+        rows = df[df["commodity"] == commodity]
+        if rows.empty:
+            continue
+        latest = float(rows["price_usd"].iloc[-1])
+        assert lo <= latest <= hi, f"{commodity}: {latest:.4f} fora de [{lo}, {hi}]"
+
+def test_eurusd_range():
+    df = pd.read_parquet("data/raw/ecb_fx_eur_usd.parquet")
+    latest = float(df["fx_eur_usd"].iloc[-1])
+    assert 0.85 <= latest <= 1.30, f"EUR/USD {latest:.4f} fora do range"
+
+def test_json_contract():
+    with open("data/dashboard_fmcg_data.json") as f:
+        data = json.load(f)
+    assert "metadata" in data
+    assert "last_updated" in data["metadata"]
+    assert "fx_eur_usd" in data["kpis"]
+    for key in ["commodities", "fx", "yoy_commodity", "momentum"]:
+        assert key in data["charts"], f"charts.{key} ausente"
+    for name in ["Cocoa", "Coffee", "Sugar", "Wheat"]:
+        assert name in data["charts"]["commodities"]

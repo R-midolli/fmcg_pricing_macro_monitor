@@ -5,6 +5,7 @@ for native Plotly.js embedding in the portfolio website.
 import pandas as pd
 import json
 import os
+from datetime import datetime, timezone
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "data")
 MARTS = os.path.join(DATA_DIR, "marts")
@@ -87,6 +88,9 @@ def build_portfolio_data():
 
     # Final Payload
     payload = {
+        "metadata": {
+            "last_updated": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        },
         "kpis": {
             "fx_eur_usd": kpi_fx,
             "cocoa_usd_t": kpis.get("Cocoa", 0),
@@ -117,7 +121,7 @@ def build_portfolio_data():
         }
     }
 
-    out_dir = os.path.join(os.path.dirname(__file__), "..", "..", "..", "portfolio_rafael_midolli", "reports")
+    out_dir = os.path.join(os.path.dirname(__file__), "..", "..", "data")
     os.makedirs(out_dir, exist_ok=True)
     out_file = os.path.join(out_dir, "dashboard_fmcg_data.json")
     

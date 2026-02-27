@@ -23,6 +23,8 @@ def fetch_commodities_data():
         'Wheat': 'ZW=F'
     }
     
+    CENTS_TICKERS = {"KC=F", "SB=F", "ZW=F"}
+    
     # We want ~3 years of data to see the recent inflation shocks
     end_date = datetime.today()
     start_date = end_date - timedelta(days=3*365)
@@ -32,19 +34,17 @@ def fetch_commodities_data():
     for name, ticker in commodities.items():
         print(f"Downloading {name} ({ticker})...")
         try:
-            df = yf.download(ticker, start=start_date, end=end_date, interval="1wk", progress=False)
+            t = yf.Ticker(ticker)
+            # Use interval="1wk" to match the original download params
+            df = t.history(start=start_date, end=end_date, interval="1wk", auto_adjust=True)
             
             if not df.empty:
-                # yfinance returns a MultiIndex column DataFrame sometimes, we just need the 'Close' price
-                if isinstance(df.columns, pd.MultiIndex):
-                    # Extract the Close column for the specific ticker
-                    closes = df['Close'][ticker]
-                else:
-                    closes = df['Close']
-                    
+                if ticker in CENTS_TICKERS:
+                    df[["Open", "High", "Low", "Close"]] /= 100
+                
                 temp_df = pd.DataFrame({
-                    'date': closes.index,
-                    'price_usd': closes.values,
+                    'date': df.index,
+                    'price_usd': df['Close'].values,
                     'commodity': name
                 })
                 all_data.append(temp_df)

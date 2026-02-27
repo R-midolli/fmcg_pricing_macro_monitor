@@ -1,3 +1,16 @@
+# Skill: setup_cicd
+
+## Quando usar
+Quando o usuário pedir para criar o pipeline automático, GitHub Actions
+ou deploy automático para o portfolio.
+
+Ler `fix_pipeline.md` primeiro para entender o fluxo de execução.
+
+---
+
+## Arquivo a criar: `.github/workflows/data_pipeline.yml`
+
+```yaml
 name: FMCG Data Pipeline
 
 on:
@@ -55,3 +68,36 @@ jobs:
             git commit -m "chore(data): fmcg auto-update $(date +%Y-%m-%d)"
             git push
           fi
+```
+
+---
+
+## Instrução manual para Rafael (o agente não consegue fazer por ele)
+
+```
+PASSO 1 — Criar Personal Access Token:
+  https://github.com/settings/tokens
+  → Generate new token (classic)
+  → Scope: marcar "repo" (full control)
+  → Expiration: No expiration (ou 1 year)
+  → Copiar o token (começa com ghp_...)
+
+PASSO 2 — Adicionar como Secret no repo FMCG:
+  https://github.com/R-midolli/fmcg_pricing_macro_monitor/settings/secrets/actions
+  → New repository secret
+  → Name:  PORTFOLIO_DEPLOY_TOKEN
+  → Value: (colar o token do passo 1)
+
+PASSO 3 — Testar:
+  https://github.com/R-midolli/fmcg_pricing_macro_monitor/actions
+  → "FMCG Data Pipeline" → Run workflow → verificar se todos os steps ficam verdes
+```
+
+---
+
+## Checklist de saída
+- [ ] `.github/workflows/data_pipeline.yml` criado
+- [ ] Usa `astral-sh/setup-uv@v3` com `python-version: '3.13'`
+- [ ] Testes rodam ANTES do step de deploy
+- [ ] Secret `PORTFOLIO_DEPLOY_TOKEN` referenciado (não hardcoded)
+- [ ] Instruções dos 3 passos mostradas ao usuário

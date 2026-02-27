@@ -8,7 +8,7 @@ def fetch_ecb_fx():
     Identifier: EXR.D.USD.EUR.SP00.A (Daily Spot Exchange Rate)
     """
     print("Fetching ECB FX Data (EUR/USD)...")
-    url = "https://data-api.ecb.europa.eu/service/data/EXR/D.USD.EUR.SP00.A"
+    url = "https://data-api.ecb.europa.eu/service/data/EXR/D.USD.EUR.SP00.A?format=csvdata&lastNObservations=100"
     
     # We want CSV format for easy parsing with Pandas
     headers = {"Accept": "text/csv"}
