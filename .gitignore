@@ -17,6 +17,13 @@ data/marts/
 *.parquet
 *.duckdb
 
+# Output reports
+reports/
+
+# Testing and Caches
+.pytest_cache/
+.ruff_cache/
+
 # IDE
 .vscode/
 .idea/
