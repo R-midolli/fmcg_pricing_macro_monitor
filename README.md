@@ -116,8 +116,7 @@ fmcg_pricing_macro_monitor/
 │       └── build_marts.py # Création du Data Warehouse DuckDB
 ├── tests/                 # Scripts de validation via pytest
 ├── pyproject.toml
-├── .gitignore
-└── .env.example
+└── .gitignore
 ```
 
 ---
