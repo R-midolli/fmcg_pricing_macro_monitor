@@ -22,7 +22,7 @@ def fetch_open_food_facts(country="france", page_size=250):
         "countries_tags_en": country
     }
     
-    response = requests.get(url, params=params)
+    response = requests.get(url, params=params, timeout=30)
     
     if response.status_code == 200:
         data = response.json()

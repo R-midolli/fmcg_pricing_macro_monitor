@@ -83,6 +83,11 @@ class TestMarts:
         assert len(df) > 0
         assert "yoy_inflation_pct" in df.columns
 
+    def test_fact_fx_has_history_and_yoy(self):
+        df = pd.read_parquet(os.path.join(MARTS_DIR, "fact_fx.parquet"))
+        assert len(df) >= 24, "FX mart should cover at least 24 monthly points"
+        assert df["yoy_change_pct"].notna().sum() >= 12, "FX mart should have usable YoY history"
+
     def test_mart_category_pressure(self):
         df = pd.read_parquet(os.path.join(MARTS_DIR, "mart_category_pressure.parquet"))
         assert len(df) > 0
@@ -118,7 +123,11 @@ def test_json_contract():
         data = json.load(f)
     assert "metadata" in data
     assert "last_updated" in data["metadata"]
+    assert "sources" in data["metadata"]
     assert "fx_eur_usd" in data["kpis"]
+    assert "summary" in data
+    assert "top_pressure" in data["summary"]
+    assert "commodity_regime" in data["summary"]
     for key in ["commodities", "fx", "yoy_commodity", "momentum"]:
         assert key in data["charts"], f"charts.{key} ausente"
     for name in ["Cocoa", "Coffee", "Sugar", "Wheat"]:

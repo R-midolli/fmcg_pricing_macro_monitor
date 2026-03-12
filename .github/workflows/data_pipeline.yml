@@ -1,9 +1,16 @@
 name: FMCG Data Pipeline
 
+permissions:
+  contents: write
+
+concurrency:
+  group: fmcg-data-pipeline
+  cancel-in-progress: false
+
 on:
   schedule:
-    - cron: '0 6 * * 1'  # toda segunda-feira 06:00 UTC
-  workflow_dispatch:       # permite rodar manualmente
+    - cron: "0 6 * * 1" # toda segunda-feira 06:00 UTC
+  workflow_dispatch: # permite rodar manualmente
 
 jobs:
   update-data:
@@ -12,6 +19,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: astral-sh/setup-uv@v3
 
@@ -21,7 +30,7 @@ jobs:
       - run: uv run python src/extract/commodities_api.py
       - run: uv run python src/extract/insee_api.py
       - run: uv run python src/extract/openfoodfacts_api.py
-        continue-on-error: true  # fonte não-crítica
+        continue-on-error: true # fonte não-crítica
 
       - run: uv run python src/transform/build_marts.py
 
@@ -34,22 +43,14 @@ jobs:
           test -f data/dashboard_fmcg_data.json || \
             (echo "❌ JSON não gerado" && exit 1)
 
-      - name: Deploy para portfolio
-        env:
-          PORTFOLIO_TOKEN: ${{ secrets.PORTFOLIO_DEPLOY_TOKEN }}
+      - name: Persistir JSON no repositório
         run: |
           git config --global user.name  "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git clone \
-            https://x-access-token:${PORTFOLIO_TOKEN}@github.com/R-midolli/portfolio_rafael_midolli.git \
-            /tmp/portfolio
-          cp data/dashboard_fmcg_data.json \
-             /tmp/portfolio/reports/dashboard_fmcg_data.json
-          cd /tmp/portfolio
-          git add reports/dashboard_fmcg_data.json
+          git add data/dashboard_fmcg_data.json
           if git diff --staged --quiet; then
             echo "Sem mudanças — nada a commitar"
           else
-            git commit -m "chore(data): fmcg auto-update $(date +%Y-%m-%d)"
+            git commit -m "chore(data): refresh FMCG dashboard $(date +%Y-%m-%d)"
             git push
           fi

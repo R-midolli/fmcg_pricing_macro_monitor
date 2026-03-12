@@ -11,6 +11,104 @@ DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "data")
 MARTS = os.path.join(DATA_DIR, "marts")
 
 
+def _safe_float(value):
+    if value is None or pd.isna(value):
+        return None
+    return float(value)
+
+
+def _safe_date(series):
+    if series.empty:
+        return None
+    return pd.to_datetime(series.max()).strftime("%Y-%m-%d")
+
+
+def _build_summary(latest_comm, latest_inf, pressure, fx_sorted, momentum):
+    latest_pressure = (
+        pressure.dropna(subset=["cost_squeeze_score"])
+        .sort_values("date")
+        .groupby(["inflation_category", "commodity"], as_index=False)
+        .last()
+    )
+
+    top_pressure = None
+    top_relief = None
+    if not latest_pressure.empty:
+        top_pressure_row = latest_pressure.sort_values("cost_squeeze_score", ascending=False).iloc[0]
+        top_pressure = {
+            "commodity": top_pressure_row["commodity"],
+            "category": top_pressure_row["inflation_category"],
+            "score": _safe_float(top_pressure_row["cost_squeeze_score"]),
+            "commodity_yoy_pct": _safe_float(top_pressure_row["commodity_yoy_pct"]),
+            "inflation_yoy_pct": _safe_float(top_pressure_row["yoy_inflation_pct"]),
+        }
+
+        relief_rows = latest_pressure[latest_pressure["cost_squeeze_score"] < 0]
+        if not relief_rows.empty:
+            relief_row = relief_rows.sort_values("cost_squeeze_score").iloc[0]
+            top_relief = {
+                "commodity": relief_row["commodity"],
+                "category": relief_row["inflation_category"],
+                "score": _safe_float(relief_row["cost_squeeze_score"]),
+                "commodity_yoy_pct": _safe_float(relief_row["commodity_yoy_pct"]),
+                "inflation_yoy_pct": _safe_float(relief_row["yoy_inflation_pct"]),
+            }
+
+    comm_regime = None
+    if not latest_comm.empty:
+        leader_row = latest_comm.sort_values("yoy_change_pct", ascending=False).iloc[0]
+        laggard_row = latest_comm.sort_values("yoy_change_pct", ascending=True).iloc[0]
+        comm_regime = {
+            "leader": leader_row["commodity"],
+            "leader_yoy_pct": _safe_float(leader_row["yoy_change_pct"]),
+            "laggard": laggard_row["commodity"],
+            "laggard_yoy_pct": _safe_float(laggard_row["yoy_change_pct"]),
+        }
+
+    fx_context = None
+    if len(fx_sorted) > 0:
+        latest_fx = fx_sorted.iloc[-1]
+        compare_idx = max(len(fx_sorted) - 4, 0)
+        base_fx = fx_sorted.iloc[compare_idx]["fx_eur_usd"]
+        fx_change_3m = None
+        if base_fx and len(fx_sorted) >= 4:
+            fx_change_3m = ((latest_fx["fx_eur_usd"] - base_fx) / base_fx) * 100
+        fx_context = {
+            "latest": _safe_float(latest_fx["fx_eur_usd"]),
+            "change_3m_pct": _safe_float(fx_change_3m),
+        }
+
+    momentum_summary = None
+    if momentum is not None and not momentum.empty:
+        latest_momentum = momentum.sort_values("date").groupby("commodity", as_index=False).last()
+        leader_row = latest_momentum.sort_values("change_12w_pct", ascending=False).iloc[0]
+        laggard_row = latest_momentum.sort_values("change_12w_pct", ascending=True).iloc[0]
+        momentum_summary = {
+            "leader": leader_row["commodity"],
+            "leader_change_4w_pct": _safe_float(leader_row["change_4w_pct"]),
+            "leader_change_12w_pct": _safe_float(leader_row["change_12w_pct"]),
+            "laggard": laggard_row["commodity"],
+            "laggard_change_4w_pct": _safe_float(laggard_row["change_4w_pct"]),
+            "laggard_change_12w_pct": _safe_float(laggard_row["change_12w_pct"]),
+        }
+
+    coverage = {
+        "commodities_as_of": _safe_date(latest_comm["date"]) if not latest_comm.empty else None,
+        "inflation_as_of": _safe_date(latest_inf["date"]) if not latest_inf.empty else None,
+        "fx_as_of": _safe_date(fx_sorted["date"]),
+        "fx_points": int(len(fx_sorted)),
+    }
+
+    return {
+        "top_pressure": top_pressure,
+        "top_relief": top_relief,
+        "commodity_regime": comm_regime,
+        "fx_context": fx_context,
+        "momentum": momentum_summary,
+        "coverage": coverage,
+    }
+
+
 def build_portfolio_data():
     commodities = pd.read_parquet(os.path.join(MARTS, "fact_commodities.parquet"))
     fx = pd.read_parquet(os.path.join(MARTS, "fact_fx.parquet"))
@@ -57,6 +155,8 @@ def build_portfolio_data():
     latest_inf = latest_inf.groupby("category").last().reset_index()
     latest_inf = latest_inf.sort_values("yoy_inflation_pct", ascending=True)
 
+    summary = _build_summary(latest_comm, latest_inf, pressure, fx_sorted, momentum)
+
     # Cost Squeeze Matrix
     pivot = pressure.pivot_table(index="inflation_category", columns="commodity",
                                  values="cost_squeeze_score", aggfunc="mean").fillna(0)
@@ -89,13 +189,21 @@ def build_portfolio_data():
     # Final Payload
     payload = {
         "metadata": {
-            "last_updated": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            "last_updated": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "sources": summary["coverage"]
         },
         "kpis": {
             "fx_eur_usd": kpi_fx,
             "cocoa_usd_t": kpis.get("Cocoa", 0),
             "coffee_usd_lb": kpis.get("Coffee", 0),
             "wheat_usd_bu": kpis.get("Wheat", 0)
+        },
+        "summary": {
+            "top_pressure": summary["top_pressure"],
+            "top_relief": summary["top_relief"],
+            "commodity_regime": summary["commodity_regime"],
+            "fx_context": summary["fx_context"],
+            "momentum": summary["momentum"]
         },
         "charts": {
             "commodities": comm_data,
@@ -126,7 +234,7 @@ def build_portfolio_data():
     out_file = os.path.join(out_dir, "dashboard_fmcg_data.json")
     
     with open(out_file, "w", encoding="utf-8") as f:
-        json.dump(payload, f, separators=(',', ':'))
+        json.dump(payload, f, separators=(",", ":"))
         
     print(f"Native Dashboard JSON exported to: {os.path.abspath(out_file)}")
 

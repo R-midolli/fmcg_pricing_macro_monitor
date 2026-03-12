@@ -1,7 +1,9 @@
-import requests
-import pandas as pd
 import os
+from datetime import date
 import xml.etree.ElementTree as ET
+
+import pandas as pd
+import requests
 
 def fetch_insee_cpi():
     """
@@ -35,10 +37,10 @@ def fetch_insee_cpi():
     url = f"https://bdm.insee.fr/series/sdmx/data/SERIES_BDM/{ids}"
     params = {
         "startPeriod": "2020-01",
-        "endPeriod": "2026-02",
+        "endPeriod": date.today().replace(day=1).strftime("%Y-%m"),
     }
 
-    response = requests.get(url, params=params)
+    response = requests.get(url, params=params, timeout=30)
 
     if response.status_code != 200:
         print(f"Failed to fetch INSEE data: HTTP {response.status_code}")
@@ -53,6 +55,7 @@ def fetch_insee_cpi():
     # INSEE uses StructureSpecificData format where Series has IDBANK attribute
     # and Obs elements have TIME_PERIOD and OBS_VALUE as direct attributes.
     # Tags have namespace prefixes, so we iterate and match by local name.
+    current_idbank = None
     for el in root.iter():
         tag = el.tag.split("}")[-1] if "}" in el.tag else el.tag
 
