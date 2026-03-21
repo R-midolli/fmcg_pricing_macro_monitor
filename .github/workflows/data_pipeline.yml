@@ -22,7 +22,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: astral-sh/setup-uv@v3
+      - uses: astral-sh/setup-uv@v5
 
       - run: uv sync
 
@@ -34,14 +34,14 @@ jobs:
 
       - run: uv run python src/transform/build_marts.py
 
-      - name: Testes — bloqueia deploy se falhar
-        run: uv run pytest tests/ -v --tb=short
-
       - name: Gerar JSON
         run: |
           uv run python src/dashboard/generate_portfolio_report.py
           test -f data/dashboard_fmcg_data.json || \
             (echo "❌ JSON não gerado" && exit 1)
+
+      - name: Testes — bloqueia deploy se falhar
+        run: uv run pytest tests/ -v --tb=short
 
       - name: Persistir JSON no repositório
         run: |
