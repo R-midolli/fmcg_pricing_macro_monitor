@@ -34,42 +34,46 @@ def build_marts():
     """)
 
     # ── 2. dim_product ───────────────────────────────────────────────────
-    print("Building dim_product...")
-    con.execute(f"""
-        COPY (
-            SELECT
-                product_id,
-                product_name,
-                brand,
-                category,
-                nutriscore,
-                origin_country,
-                -- Flag ingredient-based commodity exposure
-                CASE
-                    WHEN LOWER(category) LIKE '%chocolate%'
-                      OR LOWER(category) LIKE '%cacao%'
-                      OR LOWER(category) LIKE '%cocoa%'       THEN 'Cocoa'
-                    WHEN LOWER(category) LIKE '%coffee%'
-                      OR LOWER(category) LIKE '%café%'        THEN 'Coffee'
-                    WHEN LOWER(category) LIKE '%sugar%'
-                      OR LOWER(category) LIKE '%sucre%'
-                      OR LOWER(category) LIKE '%confiture%'
-                      OR LOWER(category) LIKE '%bonbon%'
-                      OR LOWER(category) LIKE '%candy%'       THEN 'Sugar'
-                    WHEN LOWER(category) LIKE '%bread%'
-                      OR LOWER(category) LIKE '%pain%'
-                      OR LOWER(category) LIKE '%cereal%'
-                      OR LOWER(category) LIKE '%céréal%'
-                      OR LOWER(category) LIKE '%flour%'
-                      OR LOWER(category) LIKE '%farine%'
-                      OR LOWER(category) LIKE '%wheat%'
-                      OR LOWER(category) LIKE '%biscuit%'     THEN 'Wheat'
-                    ELSE 'Other'
-                END AS primary_commodity_exposure
-            FROM read_parquet('{_p("openfoodfacts_products.parquet")}')
-            WHERE product_id IS NOT NULL
-        ) TO '{_m("dim_product.parquet")}' (FORMAT PARQUET)
-    """)
+    off_path = _p("openfoodfacts_products.parquet")
+    if os.path.exists(off_path.replace("/", os.sep)):
+        print("Building dim_product...")
+        con.execute(f"""
+            COPY (
+                SELECT
+                    product_id,
+                    product_name,
+                    brand,
+                    category,
+                    nutriscore,
+                    origin_country,
+                    -- Flag ingredient-based commodity exposure
+                    CASE
+                        WHEN LOWER(category) LIKE '%chocolate%'
+                          OR LOWER(category) LIKE '%cacao%'
+                          OR LOWER(category) LIKE '%cocoa%'       THEN 'Cocoa'
+                        WHEN LOWER(category) LIKE '%coffee%'
+                          OR LOWER(category) LIKE '%café%'        THEN 'Coffee'
+                        WHEN LOWER(category) LIKE '%sugar%'
+                          OR LOWER(category) LIKE '%sucre%'
+                          OR LOWER(category) LIKE '%confiture%'
+                          OR LOWER(category) LIKE '%bonbon%'
+                          OR LOWER(category) LIKE '%candy%'       THEN 'Sugar'
+                        WHEN LOWER(category) LIKE '%bread%'
+                          OR LOWER(category) LIKE '%pain%'
+                          OR LOWER(category) LIKE '%cereal%'
+                          OR LOWER(category) LIKE '%céréal%'
+                          OR LOWER(category) LIKE '%flour%'
+                          OR LOWER(category) LIKE '%farine%'
+                          OR LOWER(category) LIKE '%wheat%'
+                          OR LOWER(category) LIKE '%biscuit%'     THEN 'Wheat'
+                        ELSE 'Other'
+                    END AS primary_commodity_exposure
+                FROM read_parquet('{off_path}')
+                WHERE product_id IS NOT NULL
+            ) TO '{_m("dim_product.parquet")}' (FORMAT PARQUET)
+        """)
+    else:
+        print("⚠ Skipping dim_product — openfoodfacts_products.parquet not found (non-critical source)")
 
     # ── 3. fact_commodities ──────────────────────────────────────────────
     print("Building fact_commodities...")

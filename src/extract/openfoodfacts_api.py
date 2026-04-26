@@ -22,7 +22,9 @@ def fetch_open_food_facts(country="france", page_size=250):
         "countries_tags_en": country
     }
     
-    response = requests.get(url, params=params, timeout=30)
+    response = requests.get(url, params=params, timeout=30, headers={
+        "User-Agent": "FMCGCostMonitor/1.0 (https://github.com/R-midolli/fmcg_pricing_macro_monitor)"
+    })
     
     if response.status_code == 200:
         data = response.json()
